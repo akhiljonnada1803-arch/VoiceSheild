@@ -1,0 +1,54 @@
+services:
+  backend:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    ports:
+      - "8000:8000"
+    environment:
+      # Override SECRET_KEY in .env (see .env.example). The app refuses to start
+      # with the default value unless VG_ENV=development.
+      - SECRET_KEY=${SECRET_KEY:-dev-secret-changeme-in-production}
+      - VG_ENV=${VG_ENV:-development}
+      - PDPL_MAX_AGE_SECONDS=${PDPL_MAX_AGE_SECONDS:-60}
+      # Point at a checkpoint inside the mounted ./checkpoints volume to serve
+      # the real model; unset, the API falls back to ?model=classical only.
+      - XLS_R_AASIST_PATH=${XLS_R_AASIST_PATH:-}
+      - TWILIO_AUTH_TOKEN=${TWILIO_AUTH_TOKEN:-}
+    volumes:
+      # Model checkpoints (~1.2 GB for xls_r_aasist, not in git). Auto-discovery
+      # scans checkpoints/<model>/**/model_best.pt, or set XLS_R_AASIST_PATH above.
+      - ./checkpoints:/app/checkpoints:ro
+    healthcheck:
+      # python stdlib, not curl — python:3.12-slim doesn't ship curl
+      test:
+        [
+          "CMD",
+          "python",
+          "-c",
+          "import urllib.request; urllib.request.urlopen('http://localhost:8000/health', timeout=5)",
+        ]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    ports:
+      - "5173:80"
+    depends_on:
+      - backend
+
+  # Single entry point: serves the SPA and proxies /api + /ws to the backend on
+  # one origin. Open http://localhost after `docker compose up --build`.
+  nginx:
+    image: nginx:alpine
+    ports:
+      - "80:80"
+    volumes:
+      - ./nginx.conf:/etc/nginx/conf.d/default.conf:ro
+    depends_on:
+      - backend
+      - frontend
