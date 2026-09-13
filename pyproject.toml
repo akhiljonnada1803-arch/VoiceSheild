@@ -64,7 +64,7 @@ dependencies = [
 # to spectral-watermark-only when absent. Pinned — this wrapper's cert handling is
 # verified against VoiceShield's self-signed ES256 profile (see watermark/c2pa_sign).
 provenance = [
-  "c2pa-python==0.32.12",
+  "c2pa-python==0.37.10",
 ]
 dev = [
   "pytest>=7.4.0",
