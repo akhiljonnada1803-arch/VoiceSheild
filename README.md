@@ -4,114 +4,126 @@
 
 # VoiceShield 🛡️
 
-**Real-time AI voice detection for India's telecom & banking fraud defence.**
+**Real-time AI voice deepfake detection, synthesis watermarking, and vishing defence platform.**
 
 [![License: Apache 2.0](https://img.shields.io/badge/License-Apache_2.0-blue.svg)](LICENSE)
 [![Python 3.12](https://img.shields.io/badge/python-3.12-3776AB?logo=python&logoColor=white)](https://www.python.org)
 [![FastAPI](https://img.shields.io/badge/FastAPI-009688?logo=fastapi&logoColor=white)](https://fastapi.tiangolo.com)
 [![React 18](https://img.shields.io/badge/React-18-61DAFB?logo=react&logoColor=black)](https://react.dev)
 [![PyTorch](https://img.shields.io/badge/PyTorch-EE4C2C?logo=pytorch&logoColor=white)](https://pytorch.org)
+[![ONNX Runtime](https://img.shields.io/badge/ONNX_Runtime-005CED?logo=onnx&logoColor=white)](https://onnxruntime.ai/)
 [![SIH 2026](https://img.shields.io/badge/SIH-2026-FF6600.svg)](#-team)
 [![PRs welcome](https://img.shields.io/badge/PRs-welcome-brightgreen.svg)](CONTRIBUTING.md)
 
 [Quick start](#-quick-start) ·
 [How it works](#-how-it-works) ·
+[Key Features](#-features) ·
+[Architecture](#-architecture) ·
 [API](#-api) ·
 [Results](#-results) ·
-[Architecture](#-architecture) ·
+[Resume & Portfolio Guide](PROJECT_DESCRIPTION.md) ·
 [Contributing](CONTRIBUTING.md)
 
 </div>
 
 ---
 
-## Why VoiceShield?
+## 📌 Problem & Impact
 
-AI voice cloning has made phone fraud trivially scalable. In 2024 alone, criminals stole
-**US $25 M** from a single company using a deepfaked CFO on a video call, and voice-phishing
-("vishing") incidents **surged over 1,600%** in early 2025. Existing detectors collapse on
-real-world audio — phone codecs, background noise, unseen TTS engines — and give no explanation
-a human analyst can act on.
+AI voice cloning has weaponized telephony and financial communication. In recent high-profile attacks, deepfaked executive audio led to eight-figure multi-million dollar wire frauds, while automated voice-phishing (**vishing**) attacks grew by over **1,600%**. 
 
-**VoiceShield** is a production-ready platform built for **SIH 2026** that detects AI-generated
-voice in real time, explains every decision with forensic evidence, and is hardened for Indian
-telephony (8 kHz / G.711 / noisy environments).
+Most existing detectors fail in real-world scenarios due to:
+1. **Acoustic channel mismatch** (narrowband 8 kHz telephony, G.711 / AMR compression codecs).
+2. **Black-box decisions** offering zero explainability for forensic analysts or fraud investigators.
+3. **Heavy compute footprints** that cannot run on edge gateways or low-latency streaming pipelines.
+
+**VoiceShield** solves this with a **multi-engine ensemble**, **channel-adaptive risk scoring**, **explainable AI forensic cards**, and an ultra-lightweight **0.62 MB ONNX INT8 edge engine** running at **~30 ms CPU latency**.
 
 ---
 
 ## ✨ Features
 
-- 🛡️ **Strict 3-tier detection** — verdicts are `Human` (>90% confidence), `Possible AI` (86–90%), or `AI` (<86%), with no ambiguous middle-ground that bad actors can exploit
-- 🧠 **Multi-engine ensemble** — Wav2Vec2 spoof detection, acoustic artifact forensics, metadata analysis, all fused into a single calibrated risk score (0–100)
-- 🔍 **Forensic evidence** — every verdict is backed by human-readable evidence items (jitter, HNR, spectral artifacts, pitch regularity, etc.) for analyst review
-- ☎️ **Live call protection** — streaming call analysis via WebSocket; per-chunk risk scoring with EMA smoothing and anomaly boost
-- 🌍 **Telephony-hardened** — automatic detection of G.711 / narrowband / VoIP profiles with adaptive weights for each condition
-- ⚡ **Edge-ready** — ONNX INT8 export at **0.62 MB**, ~30 ms CPU inference — runs on Raspberry Pi / low-power edge devices
-- 🔌 **VoIP bridge** — Twilio Media Streams integration for real phone call screening
-- 🧾 **Chain-of-custody** — SHA-256 audit trail and NIST SP 800-86 PDF forensic reports
+- 🛡️ **Strict 3-Tier Classification** — Calibrated verdicts: `Human` (>90% confidence), `Possible AI` (86–90%), or `AI` (<86%), preventing bad actors from exploiting borderline threshold ambiguity.
+- 🧠 **Multi-Engine Ensemble** — Fuses self-supervised representations (Wav2Vec2 / WavLM), acoustic artifact analysis (jitter, shimmer, HNR, bispectral phase), and metadata profiling into a unified risk score (0–100).
+- ☎️ **Real-Time Streaming Call Protection** — Per-chunk streaming via WebSockets with Exponential Moving Average (EMA) smoothing and anomaly burst boosting for live call defense.
+- 📶 **Adaptive Channel Detector** — Automatically identifies audio bandwidth (narrowband vs wideband), VoIP/codec degradation, and adjusts detection weights dynamically.
+- 🔍 **Explainable AI (XAI) & Evidence Cards** — Generates human-readable forensic evidence (spectral anomalies, pitch regularity, glottal pulse integrity) for analyst investigation.
+- ⚡ **Ultra-Lightweight Edge Engine** — Quantized ONNX INT8 model (0.62 MB) delivering ~30 ms p50 CPU inference, capable of running on Raspberry Pi and edge gateways without GPU.
+- 🔌 **VoIP & Twilio Media Streams Bridge** — Native WebSocket bridge with HMAC signature validation for real-time telecom interception.
+- 👤 **Speaker Verification & Identity Defense** — Voice biometric embedding enrollment to verify caller identity alongside deepfake spoof detection.
+- 📜 **Forensic Audit & C2PA Provenance** — SHA-256 chain-of-custody tracking, NIST SP 800-86 compliant PDF reports, and C2PA audio watermarking.
 
 ---
 
 ## 🎯 Classification Thresholds
 
-VoiceShield uses a **strict, asymmetric** threshold design: a voice must score >90% real to be cleared as human. This is intentional — in fraud prevention, false negatives (missing a fake) are far more costly than false positives.
+VoiceShield enforces an **asymmetric, security-first** threshold design:
 
-| Verdict | Risk Score | `prob_real` | Meaning |
-|---------|:----------:|:-----------:|---------|
-| 🟢 **Human** | 0 – 9 | > 90% | High confidence genuine speech |
-| 🟡 **Possible AI** | 10 – 13 | 86% – 90% | Borderline — flag for manual review |
-| 🔴 **AI** | ≥ 14 | < 86% | AI-generated or cloned voice |
+| Verdict | Risk Score | `prob_real` | Operational Action |
+|---------|:----------:|:-----------:|--------------------|
+| 🟢 **Human** | 0 – 9 | > 90% | Authenticated genuine voice; session cleared |
+| 🟡 **Possible AI** | 10 – 13 | 86% – 90% | Borderline anomaly; step-up authentication / analyst alert |
+| 🔴 **AI** | ≥ 14 | < 86% | Synthetic/cloned voice detected; automated call intercept |
 
 ---
 
-## 📊 Results
+## 📊 Benchmark Results
 
-| Benchmark | Result |
-|-----------|--------|
-| Real-audio pass rate (speaker/text-disjoint held-out) | **96%** |
-| Kokoro voice-clone detection | **100%** |
-| XTTS v2 voice-clone detection | **100%** |
-| IndexTTS-2 voice-clone detection | **97%** |
-| ElevenLabs-v3 (unseen engine) | **95.8%** |
-| Edge model size (ONNX INT8) | **0.62 MB** |
-| CPU inference latency (p50) | **~30 ms** |
+Evaluated across ASVspoof protocols and modern zero-shot voice cloning architectures:
 
-> **Transparent & bounded.** Known limitations are documented, not hidden. See [`docs/KNOWN_LIMITATIONS.md`](docs/KNOWN_LIMITATIONS.md).
+| Benchmark / Model | Accuracy / Result |
+|-------------------|:-----------------:|
+| Real-Audio Pass Rate (Speaker & text-disjoint held-out) | **96.0%** |
+| Kokoro Voice Clone Detection | **100.0%** |
+| XTTS v2 Zero-Shot Clone Detection | **100.0%** |
+| IndexTTS-2 Detection | **97.0%** |
+| ElevenLabs-v3 (Unseen SOTA Engine) | **95.8%** |
+| Edge Model Size (ONNX INT8 Quantized) | **0.62 MB** |
+| CPU Inference Latency (p50 single chunk) | **~30 ms** |
+
+> For comprehensive methodology and metrics, see [`docs/RESULTS_canonical.md`](docs/RESULTS_canonical.md) and [`docs/EVAL_PROTOCOLS.md`](docs/EVAL_PROTOCOLS.md).
 
 ---
 
 ## 🏗️ Architecture
 
 ```mermaid
-flowchart LR
-    subgraph Client["React 18 Dashboard"]
-        UI["Detect · Live · Call Protection · Results"]
-    end
-    subgraph API["FastAPI · JWT · Rate Limit"]
-        D["/detect"]
-        CS["/call/start · /call/chunk · /call/end"]
-        WS["/ws/stream"]
-    end
-    subgraph Engine["Detection Engine (Ensemble)"]
-        W2V["Wav2Vec2\nSpoof Engine"]
-        ART["Acoustic Artifact\nEngine"]
-        META["Metadata\nEngine"]
-        RISK["Risk Engine\n(EMA + Anomaly Boost)"]
-    end
-    subgraph Output["3-Tier Verdict"]
-        H["🟢 Human\n(prob_real > 90%)"]
-        P["🟡 Possible AI\n(86–90%)"]
-        A["🔴 AI\n(< 86%)"]
+flowchart TB
+    subgraph Inputs["Audio Ingestion Layer"]
+        MIC["Live Mic Stream (WebSocket)"]
+        FILE["Batch Audio Upload (REST)"]
+        TEL["Twilio Media Streams (VoIP Bridge)"]
     end
 
-    UI -->|audio file / mic stream| API
-    D --> W2V & ART & META
-    CS --> RISK
-    WS --> RISK
-    W2V & ART & META --> RISK
-    RISK --> H & P & A
-    H & P & A --> UI
-    RISK -.ONNX INT8.--> EDGE["Edge (0.62 MB)"]
+    subgraph Preprocessing["Signal Normalization & Channel Detection"]
+        NORM["Audio Resampler & Normalizer"]
+        CHAN["Channel Detector (Narrowband / Wideband / G.711 / VoIP)"]
+    end
+
+    subgraph Engines["Multi-Engine Detection Core"]
+        W2V["Wav2Vec2 / WavLM Embeddings"]
+        ART["Acoustic Artifact Engine\n(Jitter, Shimmer, HNR, Bispectrum)"]
+        META["Metadata & Header Profiler"]
+        SPK["Speaker Verification (Biometrics)"]
+    end
+
+    subgraph RiskCore["Hierarchical Risk Engine"]
+        ADAPT["Dynamic Channel Weighting"]
+        EMA["EMA Smoothing & Anomaly Spike Detection"]
+        DEC["3-Tier Classification Engine (0-100 Score)"]
+    end
+
+    subgraph OutputLayer["Outputs & Consumers"]
+        DASH["React 18 Dashboard & Live Waveform"]
+        ALERT["Fraud Alert Webhooks"]
+        PDF["NIST SP 800-86 Forensic PDF Report"]
+        EDGE["Edge Runtime (0.62 MB ONNX)"]
+    end
+
+    Inputs --> Preprocessing
+    Preprocessing --> Engines
+    Engines --> RiskCore
+    RiskCore --> OutputLayer
 ```
 
 <details>
@@ -120,23 +132,27 @@ flowchart LR
 ```
 VoiceSheild/
 ├── src/voiceshield/
-│   ├── api/               # FastAPI app — auth (JWT), routes, middleware, WebSockets
-│   ├── models/            # Wav2Vec2, ensemble, classical, acoustic artifact engines
-│   ├── risk/              # Risk engine — EMA, anomaly boost, 3-tier classification
-│   ├── alerts/            # Alert engine — actionable fraud alerts
-│   ├── features/          # Acoustic feature extraction
-│   ├── preprocessing/     # Telephony profile detection & audio normalization
-│   ├── explanations/      # Evidence generator & human-readable reason builder
-│   ├── evaluation/        # EER / minDCF scoring, OOD & adversarial eval
-│   ├── call_processing/   # Per-call chunk manager & session tracking
-│   ├── voip/              # Twilio Media Streams bridge & stream processor
-│   └── xai/               # SHAP, GradCAM, SSL attribution
-├── frontend/              # React 18 + Vite + TypeScript dashboard
-├── edge/                  # 0.62 MB ONNX INT8 runtime (no torch)
-├── integrations/iped/     # IPED digital-forensics pipeline add-on
-├── deploy/                # Nginx + systemd scripts
-├── docs/                  # Results, protocols, known limitations
-└── tests/                 # pytest suite
+│   ├── api/                   # FastAPI routes, JWT auth, rate limiting, WebSockets
+│   ├── models/                # Wav2Vec2, ensemble, classical ML, acoustic models
+│   ├── risk/                  # Hierarchical risk engine, EMA smoothing, calibration
+│   ├── reliability/           # Channel detector (narrowband/wideband/VoIP)
+│   ├── speaker_verification/  # Biometric enrollment & speaker identity matching
+│   ├── behavioral/            # Call behavioral heuristics & fraud rules
+│   ├── call_processing/       # Live session management & chunk buffer pipeline
+│   ├── voip/                  # Twilio Media Streams bridge & live telecom parser
+│   ├── explanations/          # Human-readable evidence card generator
+│   ├── xai/                   # SHAP, GradCAM, spectral attribution
+│   ├── alerts/                # Fraud alert dispatch engine & severity tiers
+│   ├── features/              # Acoustic feature extractors (HNR, MFCC, Pitch)
+│   ├── preprocessing/         # Audio normalization & codec simulation
+│   ├── evaluation/            # ASVspoof metrics, EER / minDCF benchmark suite
+│   └── utils/                 # C2PA provenance signing, crypto audit logs
+├── frontend/                  # React 18 + Vite + TypeScript dashboard
+├── edge/                      # 0.62 MB standalone ONNX INT8 runtime (zero PyTorch)
+├── integrations/iped/         # IPED digital forensics pipeline integration
+├── deploy/                    # Nginx configs, Dockerfiles, and systemd units
+├── docs/                      # Technical specs, evaluation protocols & limitations
+└── tests/                     # Unit, integration, and performance test suite
 ```
 
 </details>
@@ -146,155 +162,134 @@ VoiceSheild/
 ## 🚀 Quick Start
 
 ### Prerequisites
-- Python 3.12+
-- Node.js 18+
+- **Python**: 3.12+
+- **Node.js**: 18+
+- **Docker** *(optional)*
 
-### Backend
+### 1. Backend Setup
 
 ```bash
 git clone https://github.com/akhiljonnada1803-arch/VoiceSheild.git
 cd VoiceSheild
 
-# Create virtual environment
+# Create and activate virtual environment
 python -m venv venv
-venv\Scripts\activate          # Windows
-# source venv/bin/activate     # Linux/macOS
+venv\Scripts\activate          # Windows (PowerShell)
+# source venv/bin/activate     # Linux / macOS
 
-# Install dependencies
-pip install -e .
+# Install package in editable mode with development tools
+pip install -e ".[dev]"
 
-# Copy and configure environment
+# Configure environment variables
 cp .env.example .env
-# Edit .env — set SECRET_KEY at minimum
 
 # Run API server
-$env:PYTHONPATH="src"
+$env:PYTHONPATH="src"          # Windows (PowerShell)
+# export PYTHONPATH="src"      # Linux / macOS
 python -m uvicorn voiceshield.api.main:app --host 127.0.0.1 --port 8000 --reload
-# API docs → http://127.0.0.1:8000/docs
 ```
 
-### Frontend
+*Interactive API Swagger docs will be live at `http://127.0.0.1:8000/docs`.*
+
+### 2. Frontend Setup
 
 ```bash
 cd frontend
 npm install
 npm run dev
-# Dashboard → http://localhost:5173
 ```
 
-### Docker Compose (all-in-one)
+*Dashboard interface will be live at `http://localhost:5173`.*
+
+### 3. Docker Deployment (Full Stack)
 
 ```bash
 docker compose up --build
-# Serves everything on http://localhost
 ```
 
-> The production Wav2Vec2 detector needs a checkpoint at `checkpoints/`. Without it, the system falls back to the classical baseline automatically.
+---
+
+## ⚙️ Environment Variables
+
+| Variable | Default | Description |
+|----------|:-------:|-------------|
+| `SECRET_KEY` | *(dev placeholder)* | JWT signing key — generate with `openssl rand -hex 32` in production |
+| `VS_ENV` | `development` | Environment mode (`development` / `production`) |
+| `WAV2VEC_MODEL_PATH` | `checkpoints/` | Path to fine-tuned acoustic / Wav2Vec2 weights |
+| `VS_ADMIN_PASSWORD` | `admin123` | Master administrator password |
+| `FRONTEND_ORIGIN` | `http://localhost:5173` | Allowed CORS origin for web clients |
+| `PDPL_MAX_AGE_SECONDS` | `60` | Auto-purging retention period for audio (Data Privacy Compliance) |
+| `TWILIO_AUTH_TOKEN` | — | Auth token for validating Twilio Media Stream signatures |
 
 ---
 
-## ⚙️ Configuration
-
-All configuration is via environment variables. Copy `.env.example` → `.env` to get started.
-
-| Variable | Default | Purpose |
-|----------|---------|---------|
-| `SECRET_KEY` | dev placeholder | JWT signing key — **always set in production** (`openssl rand -hex 32`) |
-| `VS_ENV` | `development` | `production` enforces strict auth & Twilio checks |
-| `WAV2VEC_MODEL_PATH` | — | Path to Wav2Vec2 spoof detection checkpoint |
-| `VS_ADMIN_PASSWORD` / `VS_ANALYST_PASSWORD` | demo creds | Override built-in demo users |
-| `FRONTEND_ORIGIN` | — | CORS allowlist for the web app |
-| `PDPL_MAX_AGE_SECONDS` | `60` | Auto-delete window for uploaded audio (PDPL compliance) |
-| `VS_MAX_AUDIO_SECONDS` | `600` | Maximum accepted upload length |
-| `TWILIO_AUTH_TOKEN` | — | Enables `X-Twilio-Signature` validation on VoIP bridge |
-
----
-
-## 🔌 API
+## 🔌 API Reference
 
 | Method | Endpoint | Description | Auth |
-|--------|----------|-------------|:----:|
-| `POST` | `/token` | OAuth2 password → JWT | — |
-| `POST` | `/detect` | Audio file → 3-tier verdict + evidence | 🔑 |
-| `POST` | `/call/start` | Begin a live call protection session | 🔑 |
-| `POST` | `/call/chunk/{session_id}` | Stream audio chunk → real-time risk score | 🔑 |
-| `POST` | `/call/end/{session_id}` | End session → final verdict + summary | 🔑 |
-| `GET`  | `/call/status/{session_id}` | Live session risk trajectory & alerts | 🔑 |
-| `POST` | `/forensic/report` | NIST SP 800-86 PDF audit report | 🔑 |
-| `WS`   | `/ws/stream` | Live microphone streaming (JWT as first message) | 🔑 |
-| `WS`   | `/twilio/stream` | Twilio call screening bridge | ✍️ |
-| `GET`  | `/models` · `/health` · `/docs` | Ops & Swagger | — |
+|:------:|:---------|:------------|:----:|
+| `POST` | `/token` | Authenticate user credentials & receive JWT token | — |
+| `POST` | `/detect` | Analyze audio file for deepfake artifacts & receive evidence card | 🔑 |
+| `POST` | `/call/start` | Initialize a streaming call protection session | 🔑 |
+| `POST` | `/call/chunk/{id}` | Ingest real-time audio chunk and return instantaneous risk score | 🔑 |
+| `POST` | `/call/end/{id}` | Terminate call session and generate composite verdict | 🔑 |
+| `GET`  | `/call/status/{id}` | Inspect live session risk trajectory and triggered alerts | 🔑 |
+| `POST` | `/forensic/report` | Generate NIST SP 800-86 compliant forensic PDF audit report | 🔑 |
+| `WS`   | `/ws/stream` | Low-latency live microphone streaming channel | 🔑 |
+| `WS`   | `/twilio/stream` | Twilio Media Streams VoIP live screening bridge | ✍️ |
+| `GET`  | `/health` | System health check and model loading status | — |
 
-🔑 JWT bearer · ✍️ Twilio request signature
+*🔑 = JWT Bearer Token required · ✍️ = Twilio HMAC Signature required*
 
 ---
 
-## 🧪 Testing
+## 🧪 Testing & Code Quality
 
 ```bash
-pip install -e ".[dev]"
+# Run complete test suite with coverage report
 pytest --cov=src/voiceshield tests/
+
+# Run linter and formatting checks
 ruff check src/ tests/
+black --check src/ tests/
+
+# Security vulnerability scan
+bandit -r src/
 ```
 
 ---
 
-## 📖 Documentation
+## 🛠️ Technology Stack
 
-| Document | What's inside |
-|----------|---------------|
-| [KNOWN_LIMITATIONS.md](docs/KNOWN_LIMITATIONS.md) | Honest platform limitations (streaming latency, scope, OOD) |
-| [ADVERSARIAL_ROBUSTNESS.md](docs/ADVERSARIAL_ROBUSTNESS.md) | PGD attack curve & measured adversarial limits |
-| [EVAL_PROTOCOLS.md](docs/EVAL_PROTOCOLS.md) | Evaluation protocols & how to reproduce numbers |
-| [CLONE_DETECTION_LIMITS.md](docs/CLONE_DETECTION_LIMITS.md) | Measured boundaries of clone detection |
-| [SYNTHESIS_ENGINES.md](docs/SYNTHESIS_ENGINES.md) | Supported TTS/voice-clone engine guide |
-| [RESULTS_canonical.md](docs/RESULTS_canonical.md) | Canonical results with provenance per checkpoint |
+- **Machine Learning & Signal Processing**: PyTorch, Transformers (Wav2Vec2, WavLM), XGBoost, ONNX Runtime, librosa, torchaudio, SciPy
+- **Explainable AI & Forensics**: SHAP, Captum, ReportLab (PDF generation), C2PA standard
+- **Backend & Streaming Infrastructure**: FastAPI, Uvicorn, WebSockets, Python-JOSE (JWT), SlowAPI
+- **Frontend & Visualization**: React 18, TypeScript, Vite, Recharts, Lucide Icons, Vanilla CSS
+- **DevOps & Edge Deployment**: Docker, Nginx, ONNX INT8 Quantization, GitHub Actions
 
 ---
 
-## 🛠️ Tech Stack
+## 📄 Documentation
 
-**ML** PyTorch · transformers (Wav2Vec2, WavLM) · XGBoost · SHAP · ONNX Runtime  
-**Backend** FastAPI · python-jose (JWT) · slowapi · WebSockets  
-**Frontend** React 18 · Vite · TypeScript · Recharts  
-**Audio** librosa · torchaudio · soundfile  
-**Infra** Nginx · Docker · GitHub Actions · ruff · bandit
-
----
-
-## 🗺️ Roadmap
-
-- [x] Multi-engine ensemble (Wav2Vec2 + acoustic artifacts + metadata)
-- [x] Strict 3-tier classification (Human / Possible AI / AI)
-- [x] Live call protection with per-chunk streaming
-- [x] Telephony profile detection & adaptive weights
-- [x] Forensic evidence generation for each verdict
-- [x] Twilio VoIP bridge
-- [x] ONNX INT8 edge export (0.62 MB)
-- [ ] GADC (Gulf/Indian voice corpus) fine-tuning for regional accents
-- [ ] Backbone adversarial fine-tuning for true PGD robustness
-- [ ] Mobile SDK (Android/iOS) for in-app call screening
+- 📄 [Project Description & Resume Guide](PROJECT_DESCRIPTION.md) — Comprehensive resume bullet points, ATS keywords, STAR case studies, and interview talking points.
+- 📄 [Evaluation Protocols](docs/EVAL_PROTOCOLS.md) — Benchmark datasets, EER/minDCF metrics, and reproduction instructions.
+- 📄 [Adversarial Robustness](docs/ADVERSARIAL_ROBUSTNESS.md) — PGD perturbation curves and defense evaluations.
+- 📄 [Known Limitations](docs/KNOWN_LIMITATIONS.md) — Transparent boundaries regarding background noise and extreme compression.
 
 ---
 
-## 👥 Team
+## 👥 Authors & Team
 
-| Name | Role |
-|------|------|
-| **Akhil Jonnada** | Detection engine, FastAPI backend, ensemble architecture, CI/CD |
+| Name | Role & Core Contributions |
+|------|---------------------------|
+| **Akhil Jonnada** | System Architecture, Multi-Engine Detection Ensemble, Streaming Risk Engine, FastAPI & Edge Optimization |
 
 **Competition:** Smart India Hackathon (SIH) 2026 — Internal Hackathon Round
 
 ---
 
-## 🤝 Contributing
+## 📜 License
 
-Contributions are welcome — see [CONTRIBUTING.md](CONTRIBUTING.md) and our [Code of Conduct](CODE_OF_CONDUCT.md).  
-For security issues, see [SECURITY.md](SECURITY.md).
-
----
-
-## 📄 License
-
-The VoiceShield source code and documentation are licensed under the [Apache License 2.0](LICENSE).  
-Third-party models, pretrained weights, and external assets remain subject to their own licenses.
+VoiceShield is licensed under the [Apache License 2.0](LICENSE).  
+Third-party checkpoints and audio libraries are subject to their respective licenses.
+#   S v a r S h e i l d  
+ 
